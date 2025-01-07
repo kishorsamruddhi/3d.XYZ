@@ -30,7 +30,10 @@ export default function ProductPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState<string | null>(null);
+  const [editedProduct, setEditedProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     fetchProducts();
@@ -48,9 +51,64 @@ export default function ProductPage() {
     }
   };
 
-  const handleViewImages = (images: string[]) => {
+  const handleViewImages = (images: string[], productId: string) => {
     setSelectedImages(images);
+    setSelectedProductId(productId);
     setIsImageViewerOpen(true);
+  };
+
+  const handleAddImage = (newImage: string) => {
+    if (!selectedProductId) return;
+
+    setProducts((prev) =>
+      prev.map((product) =>
+        product.productId === selectedProductId
+          ? { ...product, img: [...product.img, newImage] }
+          : product
+      )
+    );
+    setSelectedImages((prev) => [...prev, newImage]);
+  };
+
+  const handleDeleteImage = (imageToDelete: string) => {
+    if (!selectedProductId) return;
+
+    setProducts((prev) =>
+      prev.map((product) =>
+        product.productId === selectedProductId
+          ? {
+              ...product,
+              img: product.img.filter((img) => img !== imageToDelete),
+            }
+          : product
+      )
+    );
+    setSelectedImages((prev) => prev.filter((img) => img !== imageToDelete));
+  };
+
+  const handleEdit = (product: Product) => {
+    setIsEditing(product.productId);
+    setEditedProduct({ ...product });
+  };
+
+  const handleSave = () => {
+    if (editedProduct) {
+      setProducts((prev) =>
+        prev.map((product) =>
+          product.productId === editedProduct.productId ? editedProduct : product
+        )
+      );
+    }
+    setIsEditing(null);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>, field: keyof Product) => {
+    if (editedProduct) {
+      setEditedProduct({
+        ...editedProduct,
+        [field]: e.target.value,
+      });
+    }
   };
 
   return (
@@ -88,30 +146,86 @@ export default function ProductPage() {
             {products.map((product) => (
               <TableRow key={product.productId}>
                 <TableCell>{product.productId}</TableCell>
-                <TableCell>{product.productName}</TableCell>
-                <TableCell>{product.categories.join(", ")}</TableCell>
-                <TableCell>{product.productPrice}</TableCell>
-                <TableCell>{product.inStock}</TableCell>
-                <TableCell>{product.soldStockValue}</TableCell>
-                <TableCell>{product.visibility}</TableCell>
                 <TableCell>
-                  <Button onClick={() => handleViewImages(product.img)}>
+                  {isEditing === product.productId ? (
+                    <Input
+                      value={editedProduct?.productName || ""}
+                      onChange={(e) => handleChange(e, "productName")}
+                    />
+                  ) : (
+                    product.productName
+                  )}
+                </TableCell>
+                <TableCell>
+                  {isEditing === product.productId ? (
+                    <Input
+                      value={editedProduct?.categories.join(", ") || ""}
+                      onChange={(e) => handleChange(e, "categories")}
+                    />
+                  ) : (
+                    product.categories.join(", ")
+                  )}
+                </TableCell>
+                <TableCell>
+                  {isEditing === product.productId ? (
+                    <Input
+                      type="number"
+                      value={editedProduct?.productPrice || ""}
+                      onChange={(e) => handleChange(e, "productPrice")}
+                    />
+                  ) : (
+                    product.productPrice
+                  )}
+                </TableCell>
+                <TableCell>
+                  {isEditing === product.productId ? (
+                    <Input
+                      type="number"
+                      value={editedProduct?.inStock || ""}
+                      onChange={(e) => handleChange(e, "inStock")}
+                    />
+                  ) : (
+                    product.inStock
+                  )}
+                </TableCell>
+                <TableCell>{product.soldStockValue}</TableCell>
+                <TableCell>
+                  {isEditing === product.productId ? (
+                    <Input
+                      value={editedProduct?.visibility || ""}
+                      onChange={(e) => handleChange(e, "visibility")}
+                    />
+                  ) : (
+                    product.visibility
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Button
+                    onClick={() => handleViewImages(product.img, product.productId)}
+                  >
                     View Images
                   </Button>
                 </TableCell>
                 <TableCell>
-                  <Button>Edit</Button>
+                  {isEditing === product.productId ? (
+                    <Button onClick={handleSave}>Save</Button>
+                  ) : (
+                    <Button onClick={() => handleEdit(product)}>Edit</Button>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
 
-        <ImageViewer
-          images={selectedImages}
-          onClose={() => setIsImageViewerOpen(false)}
-          isOpen={isImageViewerOpen}
-        />
+        {isImageViewerOpen && (
+          <ImageViewer
+            images={selectedImages}
+            onClose={() => setIsImageViewerOpen(false)}
+            onAddImage={handleAddImage}
+            onDeleteImage={handleDeleteImage}
+          />
+        )}
       </div>
     </div>
   );
